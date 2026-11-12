@@ -1,0 +1,4 @@
+.openai/
+qa/
+node_modules/
+dist/
