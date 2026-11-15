@@ -165,3 +165,5 @@ test("UI escapes contact, note and questionnaire input; failed read is not an em
   assert.ok(page.includes("Не удалось загрузить очередь"));
   assert.ok(!page.includes("Нет заявок"));
 });
+
+test("login accepts existing short usernames without browser email validation",()=>{const html=createLeadView(ui).page({items:[],trashItems:[],view:{},feed:{},auth:{status:"signed-out"},demo:false});assert.ok(html.includes('name="email" type="text"'));assert.ok(html.includes("Логин или электронная почта"));});

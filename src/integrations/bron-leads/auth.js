@@ -1,4 +1,5 @@
 import { BackendError } from "./client.js";
+import { loginEmail } from "./login.js";
 export function createAuthService({ backend, storage }) {
   let state = { status: "loading", profile: null, error: "" },
     generation = 0,
@@ -46,12 +47,19 @@ export function createAuthService({ backend, storage }) {
         event === "TOKEN_REFRESHED" &&
         session &&
         state.status === "signed-in"
-      )
+      ) {
+        const refreshEpoch = generation;
         setTimeout(() => {
+          if (refreshEpoch !== generation) return;
           void loadProfile().catch((e) => {
-            if (e.code === "unauthenticated" || e.code === "forbidden") clear();
+            if (
+              refreshEpoch === generation &&
+              (e.code === "unauthenticated" || e.code === "forbidden")
+            )
+              clear();
           });
         }, 0);
+      }
     },
   );
   return {
@@ -75,11 +83,12 @@ export function createAuthService({ backend, storage }) {
     async signIn(email, password, remember = false) {
       storage?.setRemember(remember);
       generation++;
+      const loginEpoch = generation;
       state = { status: "loading", profile: null, error: "" };
       emit();
       try {
         const { error } = await backend.client.auth.signInWithPassword({
-          email: email.trim(),
+          email: loginEmail(email),
           password,
         });
         if (error)
@@ -87,23 +96,33 @@ export function createAuthService({ backend, storage }) {
             "login",
             "Вход не выполнен. Проверьте почту, пароль и соединение.",
           );
+        if (loginEpoch !== generation)
+          throw new BackendError(
+            "unauthenticated",
+            "Вход отменён. Повторите вход.",
+          );
         await loadProfile();
       } catch (e) {
-        clear();
-        storage?.clear();
-        state.error = e.message;
-        emit();
+        if (loginEpoch === generation) {
+          clear();
+          storage?.clear();
+          state.error = e.message;
+          emit();
+        }
         throw e;
       }
     },
     async signOut() {
       clear();
+      const logoutEpoch = generation;
       storage?.clear();
       try {
         await backend.client.auth.signOut({ scope: "local" });
       } finally {
-        clear();
-        storage?.clear();
+        if (generation === logoutEpoch) {
+          clear();
+          storage?.clear();
+        }
       }
     },
     invalidate(message = "") {

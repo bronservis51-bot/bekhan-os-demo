@@ -143,3 +143,55 @@ test("auth uses server assignments, not user metadata, and logout is local", asy
   assert.equal(auth.getState().profile, null);
   auth.destroy();
 });
+
+test("late completion of old logout cannot clear a newly established account", async () => {
+  let finishLogout,
+    clears = 0;
+  const logout = new Promise((resolve) => (finishLogout = resolve));
+  const backend = {
+    rpc: async () => ({
+      user: { id: "new-account", full_name: "Example" },
+      assignments: [{ permissions: ["org.manage"] }],
+    }),
+    client: {
+      auth: {
+        onAuthStateChange: () => ({
+          data: { subscription: { unsubscribe() {} } },
+        }),
+        getSession: async () => ({ data: { session: null } }),
+        signInWithPassword: async () => ({}),
+        signOut: () => logout,
+      },
+    },
+  };
+  const auth = createAuthService({
+    backend,
+    storage: {
+      setRemember() {},
+      clear() {
+        clears++;
+      },
+    },
+  });
+  await auth.start();
+  const old = auth.signOut();
+  await auth.signIn("new@example.test", "password");
+  const before = clears;
+  finishLogout({});
+  await old;
+  assert.equal(auth.getState().profile.id, "new-account");
+  assert.equal(clears, before);
+  auth.destroy();
+});
+
+test("short logins and staff phone identifiers use the existing application mapping", async () => {
+  const { loginEmail } = await import(
+    "../src/integrations/bron-leads/login.js"
+  );
+  assert.equal(loginEmail(" Example_User "), "example_user@access.bron.local");
+  assert.equal(loginEmail("Owner@Example.test"), "owner@example.test");
+  assert.equal(loginEmail("8 (999) 123-45-67"), "79991234567@staff.bron.local");
+  assert.equal(loginEmail("9991234567"), "79991234567@staff.bron.local");
+  assert.throws(() => loginEmail("123"));
+  assert.throws(() => loginEmail("invalid space"));
+});
