@@ -2,3 +2,8 @@
 qa/
 node_modules/
 dist/
+node_modules/
+.env
+.env.local
+.env.production
+*.log

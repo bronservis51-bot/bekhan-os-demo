@@ -1,0 +1,12 @@
+export function createShell({ ui, navigation, crm, taskCount }) {
+  const { icon, esc } = ui;
+  const { pages, moduleName } = navigation;
+  function shell(page) {
+    const working = page === "crm" && navigation.getPage() !== "crm/demo";
+    return `<aside class="sidebar" id="navigation"><a class="brand" href="#/home"><img src="./icon.svg" alt=""><strong>BEKHAN<span>OS</span></strong></a><div class="workspace"><div class="avatar">БК</div><div><b>${working ? esc(crm.profile()?.name || "Бекхан") : "Бекхан"}</b><div class="muted">Личное пространство</div></div></div><div class="nav-caption">Моё пространство</div><nav aria-label="Основная навигация" class="nav-list">${pages.map(([id, ico, title]) => `<a class="nav-item ${page === id ? "active" : ""}" href="#/${id}" ${page === id ? 'aria-current="page"' : ""}>${icon(ico, 17)}${title}${id === "tasks" ? `<span class="nav-count">${taskCount()}</span>` : ""}</a>`).join("")}</nav><div class="side-bottom"><button class="nav-item" data-action="settings">${icon("settings", 17)}Настройки</button><div class="demo-card"><b><i class="dot"></i>CRM подключена</b><p>Рабочие заявки — после входа. Остальные разделы — пример.</p></div></div></aside><button class="scrim" data-action="menu" aria-label="Закрыть меню"></button><div class="main"><header class="topbar"><div class="breadcrumb"><button class="mobile-menu" data-action="menu" aria-label="Открыть меню" aria-controls="navigation" aria-expanded="false">${icon("menu", 20)}</button><span class="root">Личное пространство</span><span class="root">/</span><strong>${page === "settings" ? "Настройки" : moduleName(page)}</strong></div><div class="top-actions"><button class="search-button" data-action="search" aria-label="Поиск по пространству">${icon("search", 16)}<span>Найти в пространстве</span><kbd>⌘ K</kbd></button><span class="demo-tag">${working ? "CRM" : "ДЕМО"}</span><button class="icon-button" data-action="notifications" aria-label="Открыть уведомления">${icon("bell", 15)}<i class="dot"></i></button><button class="avatar" data-action="settings" aria-label="Настройки пространства">БК</button></div></header><main class="page" id="content" tabindex="-1"></main></div>`;
+  }
+  function foot() {
+    return `<footer class="footer"><span><i class="dot"></i>${navigation.getPage() === "crm" ? "CRM · общая база с приложением франшизы" : "Пример данных на 12 ноября 2026 · локальное хранение"}</span><span>BEKHAN OS &nbsp; / &nbsp; Меньше шума. Больше ясности.</span></footer>`;
+  }
+  return { shell, foot };
+}
